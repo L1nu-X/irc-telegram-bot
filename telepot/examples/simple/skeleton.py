@@ -12,14 +12,14 @@ def handle(msg):
     flavor = telepot.flavor(msg)
 
     summary = telepot.glance(msg, flavor=flavor)
-    print flavor, summary
+    print(flavor, summary)
 
 
 TOKEN = sys.argv[1]  # get token from command-line
 
 bot = telepot.Bot(TOKEN)
 bot.message_loop(handle)
-print 'Listening ...'
+print('Listening ...')
 
 # Keep the program running.
 while 1:
