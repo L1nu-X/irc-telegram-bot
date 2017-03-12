@@ -23,7 +23,7 @@ TOKEN = sys.argv[1]  # get token from command-line
 
 bot = telepot.DelegatorBot(TOKEN, [
     pave_event_space()(
-        per_chat_id(), create_open, MessageCounter, timeout=10
+        per_chat_id(), create_open, MessageCounter, timeout=0
     ),
 ])
 bot.message_loop(run_forever='Listening ...')
