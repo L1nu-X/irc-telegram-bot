@@ -1,2 +1,3 @@
-# BS-Irc-Telegram-Bot
-A Bot for the operating systems course irc channel at the TU Graz
+#Irc-Telegram-Bot
+
+A Bot which relays the msgs of an irc channnel to telegram 
