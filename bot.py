@@ -4,21 +4,25 @@
 
 import sys
 import logging
+import datetime
+import configparser
+
 import irc.bot
 import irc.client
-import telepot
+
+from telegrambot import TelegramBot
 
 logger = logging.getLogger(__name__)
 
 
-class BsBot(irc.bot.SingleServerIRCBot):
-    def __init__(self, telegram, channel, nickname, server, port=6667):
+class Bot(irc.bot.SingleServerIRCBot):
+    def __init__(self, token, channel, nickname, server, port=6667):
         irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname, nickname)
         self.channel = channel
-        self.telegram = telegram
 
-        logger.info('Starting Telegram msg loop.')
-        self.telegram.message_loop(self.telegram_handle)
+        self.telegram = TelegramBot(token)
+        self.telegram.channel = channel.replace('#', '')
+        self.telegram.server = server
 
     def on_nicknameinuse(self, c, e):
         logger.info('Nickname already in use, add an underscore')
@@ -26,17 +30,23 @@ class BsBot(irc.bot.SingleServerIRCBot):
 
     def on_welcome(self, c, e):
         # server welcome
-        logger.info('Joining channel: %s', self.channel)
+        logger.info('Joining channel: {0:s}'.format(self.channel))
         c.join(self.channel)
 
     def on_privmsg(self, c, e):
         # private msg
-        logger.info('We got a private msg: ', e.arguments[0])
+        logger.info('We got a private msg: {0:s}'.format(e.arguments[0]))
         self.do_command(e, e.arguments[0])
 
     def on_pubmsg(self, c, e):
         # chan msg
-        print('<{0:s}> {1:s}'.format(e.source.split('!')[0], e.arguments[0]))
+        nick = e.source.split('!')[0]
+        msg = e.arguments[0]
+        current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+        print('[{0:s}] <{1:s}> {2:s}'.format(current_time, nick, msg))
+
+        self.telegram.send_msg(nick, msg)
 
     def on_kick(self, c, e):
         # someone got kicked
@@ -67,18 +77,14 @@ class BsBot(irc.bot.SingleServerIRCBot):
         else:
             c.notice(nick, "Not understood: " + cmd)
 
-    def telegram_handle(self, msg):
-        content_type, chat_type, chat_id = telepot.glance(msg)
-        print(content_type, chat_type, chat_id)
-
-        if content_type == 'text':
-            self.telegram.sendMessage(chat_id, msg['text'])
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
-    if len(sys.argv) != 5:
-        print("Usage: bsbot <server[:port]> <channel> <nickname> <telegram-token>")
+    arguments = sys.argv[1:]
+
+    if len(arguments) != 4:
+        print("Usage: bot <server[:port]> <channel> <nickname> <telegram-token>")
         for arg in sys.argv:
             print(arg)
 
@@ -96,10 +102,10 @@ def main():
         port = 6667
     channel = sys.argv[2]
     nickname = sys.argv[3]
+    token = sys.argv[4]
 
-    print('Starting BS-IRC-Telegram BOT...')
-    telegram = telepot.Bot(sys.argv[4])
-    bot = BsBot(telegram, channel, nickname, server, port)
+    print('Starting IRC-Telegram BOT...')
+    bot = Bot(server=server, port=port, channel=channel, nickname=nickname, token=token)
     bot.start()
 
 
