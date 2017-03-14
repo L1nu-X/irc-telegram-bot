@@ -3,4 +3,5 @@
 __pycache__
 *.save
 my_config.cfg
+/logs
 

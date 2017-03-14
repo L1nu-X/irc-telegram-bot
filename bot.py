@@ -54,12 +54,50 @@ class Bot(irc.bot.SingleServerIRCBot):
         self.telegram.send_msg(nick, msg)
 
     def on_kick(self, c, e):
+        # arg[0] was kicked by e.source (arg[0])
         logger.debug('on kick, event: ' + str(e))
 
         pass
 
     def on_join(self, c, e):
+        # e.source has joined e.target
         logger.debug('on join, event: ' + str(e))
+
+        pass
+
+    def on_quit(self, c, e):
+        # e.source Quit (arg[0])
+        logger.debug('on join, event: ' + str(e))
+
+        pass
+
+    def on_part(self, c, e):
+        logger.debug('on part, event: ' + str(e))
+
+        pass
+
+    def on_topic(self, c, e):
+        # e.source sets topic arg[0]
+        logger.debug('on topic, event: ' + str(e))
+
+        pass
+
+    def on_nick(self, c, e):
+        # e.source is now known as e.target
+        logger.debug('on nick, event: ' + str(e))
+
+        pass
+
+    def on_mode(self, c, e):
+        # +v +o +b -b, topic, channel modes
+        # e.source sets mode arg[0] arg[1]
+        logger.debug('on mode, event: ' + str(e))
+
+        pass
+
+    def on_action(self, c, e):
+        # no need for now
+        logger.debug('on action, event: ' + str(e))
 
         pass
 
