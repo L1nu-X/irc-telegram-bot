@@ -1,18 +1,20 @@
-# Author: Mathias Punkenhofer
-# Mail: newsgroups.mpunkenhofer@gmail.com
+# Author(s): Mathias Punkenhofer - code.mpunkenhofer@gmail.com
+#            -
 # Created: 13 March 2017
 
 import logging
+import json
 
 import telepot
 
 logger = logging.getLogger(__name__)
 
-
 class TelegramBotUserSettings:
     def __init__(self, enabled=False, notifications=False):
         self.enabled = enabled  # enable/disable irc relay
         self.notifications = notifications  # enable/disable irc notifications
+
+defaultBotUserSettings = {'enabled': True, 'notifications': True}
 
 
 class TelegramBot:
@@ -24,36 +26,40 @@ class TelegramBot:
 
         self.users = {}
 
-        self.channel = ''
         self.server = ''
+        self.channel = ''
         self.irc_users = []
+
+        self. user_settings_file_name = 'telegram_bot_users.save'
+        self.read_settings()
 
     def telegram_handle(self, msg):
         content_type, chat_type, chat_id = telepot.glance(msg)
 
         if content_type == 'text':
-            self.handle_command(chat_id, msg['text'])
+            self.do_command(str(chat_id), msg['text'])
 
     def send_msg(self, nick, msg):
         for user, user_settings in self.users.items():
-            if user_settings.enabled:
-                logger.debug('send_msg user: {0:d} - {1:s}'.format(user, nick + ': ' + msg))
-                self.telegram.sendMessage(user, '<{0:s}> {1:s}'.format(nick, msg))
+            if user_settings['enabled']:
+                logger.debug('send_msg user: {0:s} - {1:s}'.format(user, nick + ': ' + msg))
+                self.telegram.sendMessage(int(user), '<{0:s}> {1:s}'.format(nick, msg))
 
     def send_notification(self, msg):
         for user, user_settings in self.users.items():
-            if user_settings.enabled and user_settings.notifications:
-                logger.debug('send_notification user: {0:d} - {1:s}'.format(user, msg))
-                self.telegram.sendMessage(user, '* {1:s}'.format(msg))
+            if user_settings['enabled'] and user_settings['notifications']:
+                logger.debug('send_notification user: {0:s} - {1:s}'.format(user, msg))
+                self.telegram.sendMessage(int(user), '* {1:s}'.format(msg))
 
-    def handle_command(self, chat_id, command='no command'):
-        logger.debug('user: {0:d} sent cmd: {1:s}'.format(chat_id, command))
+    def do_command(self, id, cmd='no command'):
+        logger.debug('user: {0:s} sent cmd: {1:s}'.format(id, cmd))
 
-        if chat_id not in self.users:
-            logger.debug('Added user with id: {0:d}'.format(chat_id))
-            self.users[chat_id] = TelegramBotUserSettings()
+        if id not in self.users:
+            logger.info('New bot user, id: {0:s}'.format(id))
+            self.users[id] = defaultBotUserSettings
+            self.write_settings()
 
-        if command == '/start':
+        if cmd == '/start':
             msg = ''
 
             if self.channel:
@@ -61,28 +67,55 @@ class TelegramBot:
             else:
                 msg = 'the irc'
 
-            self.telegram.sendMessage(chat_id, 'You will now receive messages from ' + msg + '.')
-            self.users[chat_id].enabled = True
-        elif command == '/stop':
-            self.telegram.sendMessage(chat_id, 'You will no longer receive any messages from the irc!')
-            self.users[chat_id].enabled = False
-        elif command == '/channel':
+            self.telegram.sendMessage(id, 'You will now receive messages from ' + msg + '.')
+            self.users[id]['enabled'] = True
+            self.write_settings()
+        elif cmd == '/stop':
+            self.telegram.sendMessage(id, 'You will no longer receive any messages from the irc!')
+            self.users[id]['enabled'] = False
+            self.write_settings()
+        elif cmd == '/channel':
             if self.channel and self.server:
-                self.telegram.sendMessage(chat_id,
+                self.telegram.sendMessage(id,
                                           'You are getting messages from {0:s} on {1:s}'
                                           .format(self.channel, self.server))
             else:
-                self.telegram.sendMessage('I don\'t have this information currently :(')
-        elif command == '/users':
+                self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
+        elif cmd == '/users':
             if self.irc_users:
                 users = str(self.irc_users)
-                self.telegram.sendMessage(chat_id, 'Users: ' + users)
+                self.telegram.sendMessage(id, 'Users: ' + users)
             else:
-                self.telegram.sendMessage('I don\'t have this information currently :(')
-        elif command == '/help' or command == '/commands':
-            self.telegram.sendMessage(chat_id,  '/start - enable the bot to relay messages from the irc channel\n'
-                                                '/stop - stop the bot from sending you any messages\n'
-                                                '(all irc conversation while disabled will be lost)\n'
-                                                '/help - prints this message')
+                self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
+        elif cmd == '/help' or cmd == '/commands':
+            self.telegram.sendMessage(id,
+                                      '/start - enable the bot to relay messages from the irc channel\n'
+                                      '/stop - stop the bot from sending you any messages\n'
+                                      '(all irc conversation while disabled will be lost)\n'
+                                      '/channel - display basic irc channel information\n'
+                                      '/users - lists all the irc users in the channel\n'
+                                      '/help - prints this message\n'
+                                      )
         else:
-            self.telegram.sendMessage(chat_id, 'Unknown command - you might want to take a look at /help')
+            self.telegram.sendMessage(id, 'Unknown command - you might want to take a look at /help')
+
+    def write_settings(self):
+        logger.debug('writing telegram user settings to file: {0:s}'.format(self.user_settings_file_name))
+        logger.debug('users:' + json.dumps(self.users))
+
+        with open(self.user_settings_file_name, 'w') as file:
+            json.dump(self.users, file)
+
+    def read_settings(self):
+        logger.debug('reading telegram user settings to file: {0:s}'.format(self.user_settings_file_name))
+        try:
+            with open(self.user_settings_file_name, 'r') as file:
+                self.users = json.load(file)
+                logger.debug('read:' + str(self.users))
+        except EnvironmentError:
+            logger.debug('error reading telegram user settings file: {0:s}'.format(self.user_settings_file_name))
+            self.notify_owner('Unable to open the user settings file ({0:s})'.format(self.user_settings_file_name))
+
+    def notify_owner(self, msg):
+        logger.debug('notify the bot owner about: {0:s}'.format(msg))
+        pass

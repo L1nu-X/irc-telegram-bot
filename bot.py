@@ -1,5 +1,5 @@
-# Author: Mathias Punkenhofer
-# Mail: newsgroups.mpunkenhofer@gmail.com
+# Author(s): Mathias Punkenhofer - code.mpunkenhofer@gmail.com
+#            -
 # Created: 09 March 2017
 
 import sys
@@ -13,6 +13,10 @@ import irc.client
 from telegrambot import TelegramBot
 
 logger = logging.getLogger(__name__)
+
+# disable logging from other modules
+logging.getLogger('urllib3').setLevel(level=logging.WARNING)
+logging.getLogger('irc.client').setLevel(level=logging.WARNING)
 
 
 class Bot(irc.bot.SingleServerIRCBot):
@@ -30,30 +34,33 @@ class Bot(irc.bot.SingleServerIRCBot):
 
     def on_welcome(self, c, e):
         # server welcome
-        logger.info('Joining channel: {0:s}'.format(self.channel))
+        logger.info('joining channel: {0:s}'.format(self.channel))
         c.join(self.channel)
 
     def on_privmsg(self, c, e):
-        # private msg
+        logger.debug('on private message, event: ' + str(e))
         logger.info('We got a private msg: {0:s}'.format(e.arguments[0]))
         self.do_command(e, e.arguments[0])
 
     def on_pubmsg(self, c, e):
-        # chan msg
+        logger.debug('on public message, event: ' + str(e))
+
         nick = e.source.split('!')[0]
         msg = e.arguments[0]
         current_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-        print('[{0:s}] <{1:s}> {2:s}'.format(current_time, nick, msg))
+        logger.info('[{0:s}] <{1:s}> {2:s}'.format(current_time, nick, msg))
 
         self.telegram.send_msg(nick, msg)
 
     def on_kick(self, c, e):
-        # someone got kicked
+        logger.debug('on kick, event: ' + str(e))
+
         pass
 
     def on_join(self, c, e):
-        # someone joined the channel
+        logger.debug('on join, event: ' + str(e))
+
         pass
 
     def do_command(self, e, cmd):
@@ -104,7 +111,11 @@ def main():
     nickname = sys.argv[3]
     token = sys.argv[4]
 
-    print('Starting IRC-Telegram BOT...')
+    print('Starting IRC-Telegram BOT')
+    print('Server: ' + server)
+    print('Channel: ' + channel)
+    print('Nick: ' + nickname)
+
     bot = Bot(server=server, port=port, channel=channel, nickname=nickname, token=token)
     bot.start()
 

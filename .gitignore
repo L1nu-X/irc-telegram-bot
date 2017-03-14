@@ -1,3 +1,6 @@
 .idea
 *.log
 __pycache__
+*.save
+my_config.cfg
+
