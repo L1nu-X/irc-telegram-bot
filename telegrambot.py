@@ -9,11 +9,6 @@ import telepot
 
 logger = logging.getLogger(__name__)
 
-class TelegramBotUserSettings:
-    def __init__(self, enabled=False, notifications=False):
-        self.enabled = enabled  # enable/disable irc relay
-        self.notifications = notifications  # enable/disable irc notifications
-
 defaultBotUserSettings = {'enabled': True, 'notifications': True}
 
 
@@ -49,7 +44,7 @@ class TelegramBot:
         for user, user_settings in self.users.items():
             if user_settings['enabled'] and user_settings['notifications']:
                 logger.debug('send_notification user: {0:s} - {1:s}'.format(user, msg))
-                self.telegram.sendMessage(int(user), '* {1:s}'.format(msg))
+                self.telegram.sendMessage(int(user), '* {0:s}'.format(msg))
 
     def do_command(self, id, cmd='no command'):
         logger.debug('user: {0:s} sent cmd: {1:s}'.format(id, cmd))
@@ -74,6 +69,15 @@ class TelegramBot:
             self.telegram.sendMessage(id, 'You will no longer receive any messages from the irc!')
             self.users[id]['enabled'] = False
             self.write_settings()
+        elif cmd == '/notifications':
+            if self.users[id]['notifications']:
+                self.telegram.sendMessage(id, 'Notifications disabled!')
+                self.users[id]['notifications'] = False
+            else:
+                self.telegram.sendMessage(id, 'Notifications enabled!')
+                self.users[id]['notifications'] = True
+
+            self.write_settings()
         elif cmd == '/channel':
             if self.channel and self.server:
                 self.telegram.sendMessage(id,
@@ -92,9 +96,10 @@ class TelegramBot:
                                       '/start - enable the bot to relay messages from the irc channel\n'
                                       '/stop - stop the bot from sending you any messages\n'
                                       '(all irc conversation while disabled will be lost)\n'
+                                      '/notifications - enable/disable irc notifications\n'
                                       '/channel - display basic irc channel information\n'
                                       '/users - lists all the irc users in the channel\n'
-                                      '/help - prints this message\n'
+                                      '/help or /commands - prints this message\n'
                                       )
         else:
             self.telegram.sendMessage(id, 'Unknown command - you might want to take a look at /help')
