@@ -23,9 +23,9 @@ class TelegramBot:
 
         self.server = ''
         self.channel = ''
-        self.irc_users = []
+        self.irc_users = {}
 
-        self. user_settings_file_name = 'telegram_bot_users.save'
+        self.user_settings_file_name = 'telegram_bot_users.save'
         self.read_settings()
 
     def telegram_handle(self, msg):
@@ -86,9 +86,23 @@ class TelegramBot:
             else:
                 self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
         elif cmd == '/users':
-            if self.irc_users:
-                users = str(self.irc_users)
-                self.telegram.sendMessage(id, 'Users: ' + users)
+            if len(self.irc_users) > 0:
+                users = self.irc_users['users']
+                opers = self.irc_users['opers']
+                voiced = self.irc_users['voiced']
+
+                # TODO fix users command
+                '''self.telegram.sendMessage(id,
+                                          (('Operators:\n' + ', '.join(opers) + '\n') if len(opers) > 0 else '') +
+                                          (('Moderators:\n' + ', '.join(voiced) + '\n') if len(voiced) > 0 else '') +
+                                          'Users:\n' + ', '.join(users) + '\n'
+                                          )'''
+
+                self.telegram.sendMessage(id,
+                                          'Operators:\n' + ', '.join(opers) + '\n'+
+                                          'Moderators:\n' + ', '.join(voiced) + '\n' +
+                                          'Users:\n' + ', '.join(users) + '\n'
+                                          )
             else:
                 self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
         elif cmd == '/help' or cmd == '/commands':

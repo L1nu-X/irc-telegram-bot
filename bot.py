@@ -37,9 +37,14 @@ class Bot(irc.bot.SingleServerIRCBot):
         logger.info('joining channel: {0:s}'.format(self.channel))
         c.join(self.channel)
 
+        for channel_name, channel_obj in self.channels.items():
+            print(channel_name, channel_obj.users())
+            self.telegram.irc_users = sorted(channel_obj.users())
+
     def on_privmsg(self, c, e):
         logger.debug('on private message, event: ' + str(e))
         logger.info('private msg: {0:s}'.format(e.arguments[0]))
+        self.telegram.notify_owner(e.arguments[0])
         self.do_command(e, e.arguments[0])
 
     def on_pubmsg(self, c, e):
@@ -66,6 +71,8 @@ class Bot(irc.bot.SingleServerIRCBot):
 
         self.telegram.send_notification(msg)
 
+        self.update_users()
+
     def on_join(self, c, e):
         # e.source has joined e.target
         logger.debug('on join, event: ' + str(e))
@@ -77,7 +84,11 @@ class Bot(irc.bot.SingleServerIRCBot):
         msg = '{0:s} ({1:s}) has joined {2:s}'.format(joined_user, joined_user_id, channel)
         logger.info('* ' + msg)
 
-        self.telegram.send_notification(msg)
+        # avoid sending telegram users the joined msg when the bot joins the irc channel
+        if joined_user != c.get_nickname():
+            self.telegram.send_notification(msg)
+
+        self.update_users()
 
     def on_quit(self, c, e):
         # e.source Quit (arg[0])
@@ -92,6 +103,8 @@ class Bot(irc.bot.SingleServerIRCBot):
 
         self.telegram.send_notification(msg)
 
+        self.update_users()
+
     def on_part(self, c, e):
         # e.source has left e.target
         logger.debug('on part, event: ' + str(e))
@@ -104,6 +117,8 @@ class Bot(irc.bot.SingleServerIRCBot):
         logger.info('* ' + msg)
 
         self.telegram.send_notification(msg)
+
+        self.update_users()
 
     def on_topic(self, c, e):
         # e.source sets topic arg[0]
@@ -129,6 +144,8 @@ class Bot(irc.bot.SingleServerIRCBot):
 
         self.telegram.send_notification(msg)
 
+        self.update_users()
+
     def on_mode(self, c, e):
         # e.source sets mode arg[0] arg[1]
         logger.debug('on mode, event: ' + str(e))
@@ -140,6 +157,8 @@ class Bot(irc.bot.SingleServerIRCBot):
         logger.info('* ' + msg)
 
         self.telegram.send_notification(msg)
+
+        self.update_users()
 
     def on_action(self, c, e):
         # no use case for now
@@ -154,19 +173,6 @@ class Bot(irc.bot.SingleServerIRCBot):
             self.disconnect()
         elif cmd == "die":
             self.die()
-        elif cmd == "stats":
-            for chname, chobj in self.channels.items():
-                c.notice(nick, "--- Channel statistics ---")
-                c.notice(nick, "Channel: " + chname)
-                users = sorted(chobj.users())
-                c.notice(nick, "Users: " + ", ".join(users))
-                opers = sorted(chobj.opers())
-                c.notice(nick, "Opers: " + ", ".join(opers))
-                voiced = sorted(chobj.voiced())
-                c.notice(nick, "Voiced: " + ", ".join(voiced))
-        else:
-            # c.notice(nick, "Not understood: " + cmd)
-            pass
 
     def get_nick(self, full_id):
         return full_id.split('!')[0]
@@ -174,6 +180,12 @@ class Bot(irc.bot.SingleServerIRCBot):
     def get_id(self, full_id):
         return full_id.split('!')[1]
 
+    def update_users(self):
+        logger.debug('updating channel users')
+        channel_obj = self.channels[self.channel]
+        self.telegram.irc_users['users'] = sorted(channel_obj.users())
+        self.telegram.irc_users['opers'] = sorted(channel_obj.opers())
+        self.telegram.irc_users['voiced'] = sorted(channel_obj.voiced())
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
