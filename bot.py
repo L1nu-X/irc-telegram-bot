@@ -181,40 +181,70 @@ class Bot(irc.bot.SingleServerIRCBot):
         return full_id.split('!')[1]
 
     def update_users(self):
+        return
         logger.debug('updating channel users')
         channel_obj = self.channels[self.channel]
         self.telegram.irc_users['users'] = sorted(channel_obj.users())
         self.telegram.irc_users['opers'] = sorted(channel_obj.opers())
         self.telegram.irc_users['voiced'] = sorted(channel_obj.voiced())
 
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
     arguments = sys.argv[1:]
 
-    if len(arguments) != 4:
-        print("Usage: bot <server[:port]> <channel> <nickname> <telegram-token>")
+    config_file = 'config.cfg'
+    config = None
+
+    if len(arguments) == 1:
+        config_file = arguments[0]
+    elif len(arguments) != 4:
+        print('Usage: ./bot <server[:port]> <channel> <nickname> <telegram-token>\n')
+        print('\t or ./bot <configfile>')
+        print('\t or ./bot')
+
         for arg in sys.argv:
             print(arg)
 
         sys.exit(1)
-
-    s = sys.argv[1].split(":", 1)
-    server = s[0]
-    if len(s) == 2:
-        try:
-            port = int(s[1])
-        except ValueError:
-            print("Error: Erroneous port.")
-            sys.exit(1)
+    if len(arguments) == 4:
+        s = sys.argv[1].split(":", 1)
+        server = s[0]
+        if len(s) == 2:
+            try:
+                port = int(s[1])
+            except ValueError:
+                print('Error: Erroneous port.')
+                sys.exit(1)
+        else:
+            port = 6667
+        channel = sys.argv[2]
+        nickname = sys.argv[3]
+        token = sys.argv[4]
     else:
-        port = 6667
-    channel = sys.argv[2]
-    nickname = sys.argv[3]
-    token = sys.argv[4]
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read(config_file)
+
+        server = config['Irc']['server']
+        port_s = config['Irc']['port']
+
+        if port_s:
+            try:
+                port = int(port_s)
+            except ValueError:
+                print('Error: Erroneous port.')
+                sys.exit(1)
+        else:
+            port = 6667
+
+        channel = config['Irc']['channel']
+        nickname = config['Irc']['nickname']
+        token = config['Telegram']['token']
 
     print('starting irc-telegram bot\n')
     print('server: ' + server)
+    print('port: ' + str(port))
     print('channel: ' + channel)
     print('nick: ' + nickname)
     print('token: ' + token)
