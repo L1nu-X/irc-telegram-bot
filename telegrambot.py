@@ -13,7 +13,7 @@ defaultBotUserSettings = {'enabled': True, 'notifications': True}
 
 
 class TelegramBot:
-    def __init__(self, token):
+    def __init__(self, token, irc):
         self.telegram = telepot.Bot(token)
 
         logger.debug('starting telegram msg loop.')
@@ -21,9 +21,7 @@ class TelegramBot:
 
         self.users = {}
 
-        self.server = ''
-        self.channel = ''
-        self.irc_users = {}
+        self.irc = irc
 
         self.user_settings_file_name = 'telegram_bot_users.save'
         self.read_settings()
@@ -79,30 +77,24 @@ class TelegramBot:
 
             self.write_settings()
         elif cmd == '/channel':
-            if self.channel and self.server:
+            if self.irc.channel and self.irc.server:
                 self.telegram.sendMessage(id,
                                           'You are getting messages from {0:s} on {1:s}'
-                                          .format(self.channel, self.server))
+                                          .format(self.irc.channel, self.irc.server.replace('#', '')))
             else:
                 self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
         elif cmd == '/users':
-            if len(self.irc_users) > 0:
-                users = self.irc_users['users']
-                opers = self.irc_users['opers']
-                voiced = self.irc_users['voiced']
+            irc_users = self.irc.get_users()
+            if len(irc_users) > 0:
+                users = irc_users['users']
+                opers = irc_users['opers']
+                voiced = irc_users['voiced']
 
-                # TODO fix users command
-                '''self.telegram.sendMessage(id,
-                                          (('Operators:\n' + ', '.join(opers) + '\n') if len(opers) > 0 else '') +
-                                          (('Moderators:\n' + ', '.join(voiced) + '\n') if len(voiced) > 0 else '') +
-                                          'Users:\n' + ', '.join(users) + '\n'
-                                          )'''
+                opers_s = ('Operators:\n' + ', '.join(opers) + '\n') if opers else ''
+                voiced_s = ('Moderators:\n' + ', '.join(voiced) + '\n') if voiced else ''
+                users_s = 'Users:\n' + ', '.join(users) + '\n'
 
-                self.telegram.sendMessage(id,
-                                          'Operators:\n' + ', '.join(opers) + '\n'+
-                                          'Moderators:\n' + ', '.join(voiced) + '\n' +
-                                          'Users:\n' + ', '.join(users) + '\n'
-                                          )
+                self.telegram.sendMessage(id, opers_s + voiced_s + users_s)
             else:
                 self.telegram.sendMessage(id, 'I don\'t have this information currently :(')
         elif cmd == '/help' or cmd == '/commands':
